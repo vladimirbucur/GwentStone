@@ -11,4 +11,11 @@ public final class TheCursedOne extends Card {
     public TheCursedOne(final Card card) {
         super(card);
     }
+
+    @Override
+    public void cardUsesAbility(final Card attackedCard) {
+        int temp = attackedCard.getHealth();
+        attackedCard.setHealth(attackedCard.getAttackDamage());
+        attackedCard.setAttackDamage(temp);
+    }
 }

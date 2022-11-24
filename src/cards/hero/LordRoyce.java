@@ -11,4 +11,23 @@ public final class LordRoyce extends Card {
         super(cardInput);
         this.setHealth(MAXHEROHEALTH);
     }
+
+    @Override
+    public void heroUsesAbility(final ArrayList<Card> attackedRow) {
+        int maxAttackDamage = 0;
+        for (Card card : attackedRow) {
+            if (card.getAttackDamage() > maxAttackDamage) {
+                maxAttackDamage = card.getAttackDamage();
+            }
+        }
+
+        Card maxAttackDamageCard = null;
+        for (Card card : attackedRow) {
+            if (card.getAttackDamage() == maxAttackDamage) {
+                maxAttackDamageCard = card;
+            }
+        }
+
+        maxAttackDamageCard.setIsFrozen(true);
+    }
 }

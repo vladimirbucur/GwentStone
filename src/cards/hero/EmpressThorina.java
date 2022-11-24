@@ -11,4 +11,23 @@ public final class EmpressThorina extends Card {
         super(cardInput);
         this.setHealth(MAXHEROHEALTH);
     }
+
+    @Override
+    public void heroUsesAbility(final ArrayList<Card> attackedRow) {
+        int maxHealth = 0;
+        for (Card card : attackedRow) {
+            if (card.getHealth() > maxHealth) {
+                maxHealth = card.getHealth();
+            }
+        }
+
+        Card maxHealthCard = null;
+        for (Card card : attackedRow) {
+            if (card.getHealth() == maxHealth) {
+                maxHealthCard = card;
+            }
+        }
+
+        attackedRow.remove(maxHealthCard);
+    }
 }

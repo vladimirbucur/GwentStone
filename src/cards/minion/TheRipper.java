@@ -11,4 +11,9 @@ public final class TheRipper extends Card {
     public TheRipper(final Card card) {
         super(card);
     }
+
+    @Override
+    public void cardUsesAbility(final Card attackedCard) {
+        attackedCard.setAttackDamage(attackedCard.getAttackDamage() - 2);
+    }
 }

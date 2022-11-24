@@ -11,4 +11,11 @@ public final class KingMudface extends Card {
         super(cardInput);
         this.setHealth(MAXHEROHEALTH);
     }
+
+    @Override
+    public void heroUsesAbility(final ArrayList<Card> attackedRow) {
+        for (Card card : attackedRow) {
+            card.setHealth(card.getHealth() + 1);
+        }
+    }
 }

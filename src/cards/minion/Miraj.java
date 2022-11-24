@@ -11,4 +11,11 @@ public final class Miraj extends Card {
     public Miraj(final Card card) {
         super(card);
     }
+
+    @Override
+    public void cardUsesAbility(final Card attackedCard) {
+        int tempHealth = this.getHealth();
+        this.setHealth(attackedCard.getHealth());
+        attackedCard.setHealth(tempHealth);
+    }
 }

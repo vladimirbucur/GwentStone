@@ -11,4 +11,9 @@ public final class Disciple extends Card {
     public Disciple(final Card card) {
         super(card);
     }
+
+    @Override
+    public void cardUsesAbility(final Card attackedCard) {
+        attackedCard.setHealth(attackedCard.getHealth() + 2);
+    }
 }

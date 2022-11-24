@@ -17,6 +17,31 @@ public class Card {
     private boolean isTank;
     private boolean isUsed;
 
+    /**
+     * The method that is overridden in the "environment" card classes and performs the
+     * "useEnvironmentCard" action specific to each individual card
+     * @param gameBoard
+     * @param row
+     */
+    public void useEnvironment(final GameBoard gameBoard, final int row) {
+    }
+
+    /**
+     * The method that is overridden in the "minion" type card classes and performs the
+     * cardUsesAbility" action specific to each individual card
+     * @param attackedCard
+     */
+    public void cardUsesAbility(final Card attackedCard) {
+    }
+
+    /**
+     * The method that is overridden in the "hero" type card classes and performs the
+     * heroUsesAbility" action specific to each individual hero
+     * @param attackedRow
+     */
+    public void heroUsesAbility(final ArrayList<Card> attackedRow) {
+    }
+
     public Card(final CardInput card) {
         this.mana = card.getMana();
         this.attackDamage = card.getAttackDamage();

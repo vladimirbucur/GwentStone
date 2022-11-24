@@ -42,6 +42,21 @@ public final class Player {
     static final int MAXMANA = 10;
 
     /**
+     * The method that removes the cards from the player's hand and deck from the previous match
+     */
+    public void newGame() {
+        this.setMana(0);
+        while (!this.getDeck().isEmpty()) {
+            this.getDeck().remove(0);
+        }
+
+        while (!this.getHandCards().isEmpty()) {
+            this.getHandCards().remove(0);
+        }
+    }
+
+
+    /**
      * The method by which the player chooses the deck
      * @param decks
      * @param deckIndex
@@ -221,7 +236,6 @@ public final class Player {
 
         return objectNode;
     }
-
 
     /**
      * The method that returns an error code if needed, otherwise it returns the order and
@@ -403,6 +417,310 @@ public final class Player {
         objectNode.put("command", "getPlayerMana");
         objectNode.put("playerIdx", actionsInput.getPlayerIdx());
         objectNode.put("output", this.getMana());
+
+        return objectNode;
+    }
+
+    /**
+     * The method that returns an error code if needed, otherwise it returns the order and
+     * executes the command
+     * @param actionsInput
+     * @param gameBoard
+     * @param currentPlayerIndex
+     * @return
+     */
+    int useEnvironmentCardCommand(final ActionsInput actionsInput, final GameBoard gameBoard,
+                                  final int currentPlayerIndex) {
+        if (!this.getHandCards().get(actionsInput.getHandIdx()).isEnvironment()) {
+            return ERRORCODE1; // not environment card
+        }
+        if (this.getHandCards().get(actionsInput.getHandIdx()).getMana() > this.getMana()) {
+            return ERRORCODE2; // not enough mana
+        }
+        if (currentPlayerIndex == CURRENTPLAYER1CODE) {
+            if (actionsInput.getAffectedRow() == ROWCODE2
+                    || actionsInput.getAffectedRow() == ROWCODE3) {
+                return ERRORCODE3; //row does not belong to the enemy
+            }
+        } else {
+            if (actionsInput.getAffectedRow() == ROWCODE
+                    || actionsInput.getAffectedRow() == ROWCODE1) {
+                return ERRORCODE3; //row does not belong to the enemy
+            }
+        }
+
+        int mirroredRow = gameBoard.getNoRows() - 1 - actionsInput.getAffectedRow();
+        if (gameBoard.getCards().get(mirroredRow).size() >= MAXROWSIZE
+                && this.handCards.get(actionsInput.getHandIdx()).getName().equals("Heart Hound")) {
+            return ERRORCODE4; //Cannot steal enemy card since the player's row is full.
+        }
+
+        this.handCards.get(actionsInput.getHandIdx()).useEnvironment(gameBoard, actionsInput.
+                getAffectedRow());
+        this.setMana(this.getMana() - this.handCards.get(actionsInput.getHandIdx()).getMana());
+        this.handCards.remove(actionsInput.getHandIdx());
+
+        return 0; // used environment card
+    }
+
+    /**
+     * The method that creates and returns an ObjectNode to send the output for
+     * the command "useEnvironmentCard" in case there is an error
+     * @param actionsInput
+     * @param objectMapper
+     * @param canPlaceCard
+     * @return
+     */
+    ObjectNode useEnvironmentCardError(final ActionsInput actionsInput, final ObjectMapper
+            objectMapper, final int canPlaceCard) {
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        objectNode.put("command", "useEnvironmentCard");
+        objectNode.put("handIdx", actionsInput.getHandIdx());
+        objectNode.put("affectedRow", actionsInput.getAffectedRow());
+
+        switch (canPlaceCard) {
+            case ERRORCODE1 -> objectNode.put("error", "Chosen card is not of type "
+                    + "environment.");
+            case ERRORCODE2 -> objectNode.put("error", "Not enough mana to use environment "
+                    + "card.");
+            case ERRORCODE3 -> objectNode.put("error", "Chosen row does not belong to the "
+                    + "enemy.");
+            case ERRORCODE4 -> objectNode.put("error", "Cannot steal enemy card since the "
+                    + "player's row is full.");
+            default -> {
+            }
+        }
+
+        return objectNode;
+    }
+
+    /**
+     * The method that creates and returns an ObjectNode to send the output for
+     * the command "getEnvironmentCardsInHand"
+     * @param actionsInput
+     * @param objectMapper
+     * @return
+     */
+    ObjectNode getEnvironmentCardsInHand(final ActionsInput actionsInput, final ObjectMapper
+            objectMapper) {
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        objectNode.put("command", "getEnvironmentCardsInHand");
+        objectNode.put("playerIdx", actionsInput.getPlayerIdx());
+        ArrayNode arrayNodeCards = objectMapper.createArrayNode();
+
+        for (Card card : this.getHandCards()) {
+            if (card.isEnvironment()) {
+                ObjectNode cardNode = objectMapper.createObjectNode();
+                cardNode.put("mana", card.getMana());
+                if (!card.isEnvironment() && !card.isHero()) {
+                    cardNode.put("attackDamage", card.getAttackDamage());
+                    cardNode.put("health", card.getHealth());
+                }
+                cardNode.put("description", card.getDescription());
+
+                ArrayNode colors = objectMapper.createArrayNode();
+                for (String color : card.getColors()) {
+                    colors.add(color);
+                }
+
+                cardNode.set("colors", colors);
+
+                cardNode.put("name", card.getName());
+
+                arrayNodeCards.add(cardNode);
+            }
+        }
+
+        objectNode.set("output", arrayNodeCards);
+        return objectNode;
+    }
+
+    /**
+     * The method that returns an error code if needed, otherwise it returns the order and
+     * executes the command
+     * @param actionsInput
+     * @param gameBoard
+     * @param currentPlayerIndex
+     * @return
+     */
+    int useAttackHeroCommand(final ActionsInput actionsInput, final GameBoard gameBoard,
+                             final int currentPlayerIndex) {
+        if (actionsInput.getCardAttacker().getY() >= gameBoard.getCards().
+                get(actionsInput.getCardAttacker().getX()).size()) {
+            return -1;
+        }
+
+        Card attackerCard = new Card(gameBoard.getCards().get(actionsInput.getCardAttacker().
+                getX()).get(actionsInput.getCardAttacker().getY()));
+        if (attackerCard.getIsFrozen()) {
+            return ERRORCODE1; // is frozen
+        }
+        if (attackerCard.getIsUsed()) {
+            return ERRORCODE2; // is used
+        }
+        if (currentPlayerIndex == CURRENTPLAYER1CODE) {
+            for (Card card : gameBoard.getCards().get(ROWCODE1)) {
+                if (card.getIsTank()) {
+                    return ERRORCODE3; // Attacked card is not of type 'Tank'.
+                }
+            }
+        } else {
+            for (Card card : gameBoard.getCards().get(ROWCODE2)) {
+                if (card.getIsTank()) {
+                    return ERRORCODE3; // Attacked card is not of type 'Tank'.
+                }
+            }
+        }
+        return 0; // used environment card
+    }
+
+    /**
+     * The method that creates and returns an ObjectNode to send the output for
+     * the command "useAttackHero" in case there is an error
+     * @param actionsInput
+     * @param objectMapper
+     * @param canAttackHero
+     * @return
+     */
+    ObjectNode useAttackHeroError(final ActionsInput actionsInput, final ObjectMapper objectMapper,
+                                  final int canAttackHero) {
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        objectNode.put("command", "useAttackHero");
+        objectNode.putPOJO("cardAttacker", actionsInput.getCardAttacker());
+
+        switch (canAttackHero) {
+            case ERRORCODE1 -> objectNode.put("error", "Attacker card is frozen.");
+            case ERRORCODE2 -> objectNode.put("error", "Attacker card has already attacked "
+                    + "this turn.");
+            case ERRORCODE3 -> objectNode.put("error", "Attacked card is not of type 'Tank'.");
+            default -> {
+            }
+        }
+
+        return objectNode;
+    }
+
+    /**
+     * The method that returns an error code if needed, otherwise it returns the order and
+     * executes the command
+     * @param actionsInput
+     * @param gameBoard
+     * @param currentPlayerIndex
+     * @return
+     */
+    int usesHeroAbilityCommand(final ActionsInput actionsInput, final GameBoard gameBoard,
+                               final int currentPlayerIndex) {
+        if (this.getHeroCard().getMana() > this.getMana()) {
+            return ERRORCODE1; // not enough mana
+        }
+        if (this.getHeroCard().getIsUsed()) {
+            return ERRORCODE2; // hero is used
+        }
+        if (currentPlayerIndex == CURRENTPLAYER1CODE) {
+            if (this.getHeroCard().getName().equals("Lord Royce")
+                    || this.getHeroCard().getName().equals("Empress Thorina")) {
+                if (actionsInput.getAffectedRow() == ROWCODE2
+                        || actionsInput.getAffectedRow() == ROWCODE3) {
+                    return ERRORCODE3; // row does not belong to the enemy.
+                }
+            } else if (this.getHeroCard().getName().equals("General Kocioraw")
+                    || this.getHeroCard().getName().equals("King Mudface")) {
+                if (actionsInput.getAffectedRow() == ROWCODE
+                        || actionsInput.getAffectedRow() == ROWCODE1) {
+                    return ERRORCODE4; // row does not belong to the current player.
+                }
+            }
+        } else {
+            if (this.getHeroCard().getName().equals("Lord Royce")
+                    || this.getHeroCard().getName().equals("Empress Thorina")) {
+                if (actionsInput.getAffectedRow() == ROWCODE
+                        || actionsInput.getAffectedRow() == ROWCODE1) {
+                    return ERRORCODE3; // row does not belong to the enemy.
+                }
+            } else if (this.getHeroCard().getName().equals("General Kocioraw")
+                    || this.getHeroCard().getName().equals("King Mudface")) {
+                if (actionsInput.getAffectedRow() == ROWCODE2
+                        || actionsInput.getAffectedRow() == ROWCODE3) {
+                    return ERRORCODE4; // row does not belong to the current player.
+                }
+            }
+        }
+
+        ArrayList<Card> attackedRow = gameBoard.getCards().get(actionsInput.getAffectedRow());
+        this.getHeroCard().heroUsesAbility(attackedRow);
+        this.getHeroCard().setIsUsed(true);
+        this.setMana(this.getMana() - this.getHeroCard().getMana());
+
+        return 0; // used hero ability
+    }
+
+    /**
+     * The method that creates and returns an ObjectNode to send the output for
+     * the command "usesHeroAbility" in case there is an error
+     * @param actionsInput
+     * @param objectMapper
+     * @param canUseHeroAbility
+     * @return
+     */
+    ObjectNode usesHeroAbilityError(final ActionsInput actionsInput, final ObjectMapper
+            objectMapper, final int canUseHeroAbility) {
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        objectNode.put("command", "useHeroAbility");
+        objectNode.put("affectedRow", actionsInput.getAffectedRow());
+
+        switch (canUseHeroAbility) {
+            case ERRORCODE1 -> objectNode.put("error", "Not enough mana to use hero's "
+                    + "ability.");
+            case ERRORCODE2 -> objectNode.put("error", "Hero has already attacked this turn.");
+            case ERRORCODE3 -> objectNode.put("error", "Selected row does not belong to the "
+                    + "enemy.");
+            case ERRORCODE4 -> objectNode.put("error", "Selected row does not belong to the "
+                    + "current player.");
+            default -> {
+            }
+        }
+
+        return objectNode;
+    }
+
+    /**
+     * The method that creates and returns an ObjectNode to send the output for
+     * the command "getTotalGamesPlayed"
+     * @param objectMapper
+     * @return
+     */
+    ObjectNode getTotalGamesPlayed(final ObjectMapper objectMapper) {
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        objectNode.put("command", "getTotalGamesPlayed");
+        objectNode.put("output", this.getPlayedGames());
+
+        return objectNode;
+    }
+
+    /**
+     * The method that creates and returns an ObjectNode to send the output for
+     * the command "getPlayerOneWins"
+     * @param objectMapper
+     * @return
+     */
+    ObjectNode getPlayerOneWins(final ObjectMapper objectMapper) {
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        objectNode.put("command", "getPlayerOneWins");
+        objectNode.put("output", this.getWonGames());
+
+        return objectNode;
+    }
+
+    /**
+     * The method that creates and returns an ObjectNode to send the output for
+     * the command "getPlayerTwoWins"
+     * @param objectMapper
+     * @return
+     */
+    ObjectNode getPlayerTwoWins(final ObjectMapper objectMapper) {
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        objectNode.put("command", "getPlayerTwoWins");
+        objectNode.put("output", this.getWonGames());
 
         return objectNode;
     }

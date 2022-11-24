@@ -38,6 +38,7 @@ public final class Run {
         DecksInput decks2 = inputData.getPlayerTwoDecks();
 
         for (int i = 0; i < inputData.getGames().size(); i++) {
+            newGame(player1, player2, gameBoard);
 
             GameInput game = inputData.getGames().get(i);
             StartGameInput startGame = game.getStartGame();
@@ -53,7 +54,16 @@ public final class Run {
                     case "endPlayerTurn" -> endPlayerTurn(player1, player2, gameBoard);
                     case "placeCard" ->  placeCard(output, objectMapper, player1, player2,
                             gameBoard, action);
-
+                    case "cardUsesAttack" -> cardUsesAttack(output, objectMapper, gameBoard,
+                            action);
+                    case "cardUsesAbility" -> cardUsesAbility(output, objectMapper, gameBoard,
+                            action);
+                    case "useAttackHero" -> useAttackHero(output, objectMapper, player1, player2,
+                            gameBoard, action);
+                    case "useHeroAbility" -> useHeroAbility(output, objectMapper, player1, player2,
+                            gameBoard, action);
+                    case "useEnvironmentCard" -> useEnvironmentCard(output, objectMapper, player1,
+                            player2, gameBoard, action);
                     case "getCardsInHand" -> getCardsInHand(output, objectMapper, player1, player2,
                             action);
                     case "getPlayerDeck" -> getPlayerDeck(output, objectMapper, player1, player2,
@@ -62,8 +72,20 @@ public final class Run {
                     case "getPlayerTurn" -> getPlayerTurn(output, objectMapper);
                     case "getPlayerHero" -> getPlayerHero(output, objectMapper, player1, player2,
                             action);
+                    case "getCardAtPosition" -> getCardAtPosition(output, objectMapper, gameBoard,
+                            action);
                     case "getPlayerMana" -> getPlayerMana(output, objectMapper, player1, player2,
                             action);
+                    case "getEnvironmentCardsInHand" -> getEnvironmentCardsInHand(output,
+                            objectMapper, player1, player2, action);
+                    case "getFrozenCardsOnTable" -> getFrozenCardsOnTable(output, objectMapper,
+                            gameBoard);
+                    case "getTotalGamesPlayed" -> getTotalGamesPlayed(output, objectMapper,
+                            player1);
+                    case "getPlayerOneWins" -> getPlayerOneWins(output, objectMapper,
+                            player1);
+                    case "getPlayerTwoWins" -> getPlayerTwoWins(output, objectMapper,
+                            player2);
                     default -> {
                         ObjectNode objectNode = objectMapper.createObjectNode();
                         objectNode.put("command", "Invalid command");
@@ -71,6 +93,19 @@ public final class Run {
                 }
             }
         }
+    }
+
+    /**
+     * The method that prepares the players and the game board for the start of a new match
+     * @param player1
+     * @param player2
+     * @param gameBoard
+     */
+    private static void newGame(final Player player1, final Player player2,
+                                final GameBoard gameBoard) {
+        player1.newGame();
+        player2.newGame();
+        gameBoard.newGame();
     }
 
     /**
@@ -110,6 +145,216 @@ public final class Run {
         this.setStartPlayerIndex(startGame.getStartingPlayer());
         this.setCurrentPlayerIndex(startGame.getStartingPlayer());
         this.setCurrentRound(1);
+    }
+
+    /**
+     * The method that sends to the output how many matches player 2 won
+     * @param output
+     * @param objectMapper
+     * @param player2
+     */
+    private static void getPlayerTwoWins(final ArrayNode output, final ObjectMapper objectMapper,
+                                         final Player player2) {
+        output.add(player2.getPlayerTwoWins(objectMapper));
+    }
+
+    /**
+     * The method that sends to the output how many matches player 1 won
+     * @param output
+     * @param objectMapper
+     * @param player1
+     */
+    private static void getPlayerOneWins(final ArrayNode output, final ObjectMapper objectMapper,
+                                         final Player player1) {
+        output.add(player1.getPlayerOneWins(objectMapper));
+    }
+
+
+    /**
+     * The method that sends to the output how many matches have been played up to that moment
+     * @param output
+     * @param objectMapper
+     * @param player1
+     */
+    private static void getTotalGamesPlayed(final ArrayNode output, final ObjectMapper
+                                            objectMapper, final Player player1) {
+        output.add(player1.getTotalGamesPlayed(objectMapper));
+    }
+
+    /**
+     *
+     * @param output
+     * @param objectMapper
+     * @param player1
+     * @param player2
+     * @param gameBoard
+     * @param action
+     */
+    private void useHeroAbility(final ArrayNode output, final ObjectMapper objectMapper,
+                                final Player player1, final Player player2,
+                                final GameBoard gameBoard, final ActionsInput action) {
+        if (currentPlayerIndex == CURRENTPLAYER1CODE) {
+            useHeroAbilityForEachPlayer(output, objectMapper, player1, gameBoard, action);
+        } else {
+            useHeroAbilityForEachPlayer(output, objectMapper, player2, gameBoard, action);
+        }
+    }
+
+    /**
+     * The method that performs the necessary actions for using the current player's hero ability
+     * @param output
+     * @param objectMapper
+     * @param player1
+     * @param gameBoard
+     * @param action
+     */
+    private void useHeroAbilityForEachPlayer(final ArrayNode output, final ObjectMapper
+                                             objectMapper, final Player player1, final GameBoard
+                                                     gameBoard, final ActionsInput action) {
+        int canUseHeroAbility = player1.usesHeroAbilityCommand(action,
+                gameBoard, currentPlayerIndex);
+        if (canUseHeroAbility != 0) {
+            output.add(player1.usesHeroAbilityError(action, objectMapper,
+                    canUseHeroAbility));
+        }
+    }
+
+    /**
+     * The method that performs the command "useAttackHero"
+     * @param output
+     * @param objectMapper
+     * @param player1
+     * @param player2
+     * @param gameBoard
+     * @param action
+     */
+    private void useAttackHero(final ArrayNode output, final ObjectMapper objectMapper,
+                               final Player player1, final Player player2,
+                               final GameBoard gameBoard, final ActionsInput action) {
+        if (this.currentPlayerIndex == CURRENTPLAYER1CODE) {
+            this.attackHeroForEachPlayer(output, objectMapper, player1, player2, gameBoard,
+                    action, "one");
+        } else {
+            this.attackHeroForEachPlayer(output, objectMapper, player2, player1, gameBoard,
+                    action, "two");
+        }
+    }
+
+    /**
+     * The method that performs the command "cardUsesAbility"
+     * @param output
+     * @param objectMapper
+     * @param gameBoard
+     * @param action
+     */
+    private void cardUsesAbility(final ArrayNode output, final ObjectMapper objectMapper,
+                                 final GameBoard gameBoard, final ActionsInput action) {
+        int canUsesAbility = gameBoard.cardUsesAbilityCommand(action,
+                this.getCurrentPlayerIndex());
+        if (canUsesAbility != 0) {
+            output.add(gameBoard.cardUsesAbilityError(action, objectMapper,
+                    canUsesAbility));
+        }
+    }
+
+    /**
+     * The method that performs the command "cardUsesAttack"
+     * @param output
+     * @param objectMapper
+     * @param gameBoard
+     * @param action
+     */
+    private void cardUsesAttack(final ArrayNode output, final ObjectMapper objectMapper,
+                                final GameBoard gameBoard, final ActionsInput action) {
+        int canUseAttack = gameBoard.cardUsesAttackCommand(action,
+                this.getCurrentPlayerIndex());
+        if (canUseAttack != 0) {
+            output.add(gameBoard.cardUsesAttackError(action, objectMapper,
+                    canUseAttack));
+        }
+    }
+
+    /**
+     * The method that performs the command "getFrozenCardsOnTable"
+     * @param output
+     * @param objectMapper
+     * @param gameBoard
+     */
+    private static void getFrozenCardsOnTable(final ArrayNode output, final ObjectMapper
+                                              objectMapper, final GameBoard gameBoard) {
+        output.add(gameBoard.getFrozenCardsOnTable(objectMapper));
+    }
+
+    /**
+     * The method that performs the command "getCardAtPosition"
+     * @param output
+     * @param objectMapper
+     * @param gameBoard
+     * @param action
+     */
+    private static void getCardAtPosition(final ArrayNode output, final ObjectMapper objectMapper,
+                                          final GameBoard gameBoard, final ActionsInput action) {
+        output.add(gameBoard.getCardAtPosition(action, objectMapper));
+    }
+
+    /**
+     * The method that performs the command "getEnvironmentCardsInHand"
+     * @param output
+     * @param objectMapper
+     * @param player1
+     * @param player2
+     * @param action
+     */
+    private static void getEnvironmentCardsInHand(final ArrayNode output, final ObjectMapper
+                                                  objectMapper, final Player player1, final Player
+                                                  player2, final ActionsInput action) {
+        if (action.getPlayerIdx() == 1) {
+            output.add(player1.getEnvironmentCardsInHand(action,
+                    objectMapper));
+        } else {
+            output.add(player2.getEnvironmentCardsInHand(action,
+                    objectMapper));
+        }
+    }
+
+    /**
+     * The method that performs the command "useEnvironmentCard"
+     * @param output
+     * @param objectMapper
+     * @param player1
+     * @param player2
+     * @param gameBoard
+     * @param action
+     */
+    private void useEnvironmentCard(final ArrayNode output, final ObjectMapper objectMapper,
+                                    final Player player1, final Player player2,
+                                    final GameBoard gameBoard, final ActionsInput action) {
+        if (this.getCurrentPlayerIndex() == CURRENTPLAYER1CODE) {
+            useEnvironmentCardForEachPlayer(output, objectMapper, player1, gameBoard, action);
+        } else {
+            useEnvironmentCardForEachPlayer(output, objectMapper, player2, gameBoard, action);
+        }
+    }
+
+    /**
+     * The method that performs the necessary actions for using an "environment" card of
+     * the current player
+     * @param output
+     * @param objectMapper
+     * @param player1
+     * @param gameBoard
+     * @param action
+     */
+    private void useEnvironmentCardForEachPlayer(final ArrayNode output, final ObjectMapper
+                                                 objectMapper, final Player player1,
+                                                 final GameBoard gameBoard,
+                                                 final ActionsInput action) {
+        int canUseEnvironmentCard = player1.useEnvironmentCardCommand(action,
+                gameBoard, this.getCurrentPlayerIndex());
+        if (canUseEnvironmentCard != 0) {
+            output.add(player1.useEnvironmentCardError(action,
+                    objectMapper, canUseEnvironmentCard));
+        }
     }
 
     /**
@@ -298,6 +543,48 @@ public final class Run {
         }
     }
 
+    /**
+     * The method that performs the necessary actions, placing and attacking the opposing hero
+     * by the current player
+     * @param output
+     * @param objectMapper
+     * @param player1
+     * @param player2
+     * @param gameBoard
+     * @param action
+     * @param winnerPlayerNumber
+     */
+    private void attackHeroForEachPlayer(final ArrayNode output, final ObjectMapper objectMapper,
+                                         final Player player1, final Player player2,
+                                         final GameBoard gameBoard, final ActionsInput action,
+                                         final String winnerPlayerNumber) {
+        int canAttackHero = player1.useAttackHeroCommand(action, gameBoard, currentPlayerIndex);
+        if (canAttackHero != 0) {
+            output.add(player1.useAttackHeroError(action, objectMapper, canAttackHero));
+        } else {
+            if (action.getCardAttacker().getY() >= gameBoard.getCards().get(action.
+                    getCardAttacker().getX()).size()) {
+                return;
+            }
+
+            Card attackerCard = gameBoard.getCards().get(action.getCardAttacker().getX()).
+                    get(action.getCardAttacker().getY());
+            attackerCard.setIsUsed(true);
+            player2.getHeroCard().takeDamage(attackerCard.getAttackDamage());
+
+            if (player2.getHeroCard().getHealth() <= 0) {
+                ObjectNode attackHeroNode = objectMapper.createObjectNode();
+                attackHeroNode.put("gameEnded", "Player " + winnerPlayerNumber
+                        + " killed the enemy hero.");
+                output.add(attackHeroNode);
+
+                player1.setPlayedGames(player1.getPlayedGames() + 1);
+                player2.setPlayedGames(player2.getPlayedGames() + 1);
+                player1.setWonGames(player1.getWonGames() + 1);
+            }
+        }
+    }
+
     public int getCurrentPlayerIndex() {
         return currentPlayerIndex;
     }
@@ -321,5 +608,4 @@ public final class Run {
     public void setCurrentRound(final int currentRound) {
         this.currentRound = currentRound;
     }
-
 }
